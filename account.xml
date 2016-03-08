@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The COPYRIGHT file at the top level of this repository contains the full
+     copyright notices and license terms. -->
+<tryton>
+    <data>
+        <record model="ir.ui.view" id="account_import_contaplus_start_view_form">
+            <field name="model">account.import.contaplus.start</field>
+            <field name="type">form</field>
+            <field name="name">account_import_contaplus_start_form</field>
+        </record>
+        <record model="ir.action.wizard" id="wizard_account_import_contaplus">
+            <field name="name">Import Contaplus File</field>
+            <field name="wiz_name">account.import.contaplus</field>
+        </record>
+        <!-- Menus -->
+        <menuitem action="wizard_account_import_contaplus" id="menu_account_import_contaplus" parent="account.menu_account" sequence="1" name="Import Contaplus File"/>
+    </data>
+</tryton>
