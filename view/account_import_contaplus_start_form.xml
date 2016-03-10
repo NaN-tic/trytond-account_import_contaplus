@@ -4,4 +4,6 @@
 <form string="Account Import Contaplus Start">
     <label name="data"/>
     <field name="data"/>
+    <label name="journal"/>
+    <field name="journal"/>
 </form>

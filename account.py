@@ -83,6 +83,13 @@ class AccountImportContaplusStart(ModelView):
     'Account Import Contaplus Start'
     __name__ = 'account.import.contaplus.start'
     data = fields.Binary('File', required=True)
+    journal = fields.Many2One('account.journal', 'Journal', required=True)
+
+    @staticmethod
+    def default_journal():
+        Journal = Pool().get('account.journal')
+        return Journal.search([('type', '=', 'general')], limit=1)[0].id
+
 
 class AccountImportContaplus(Wizard):
     'Account Import Contaplus'
@@ -102,7 +109,6 @@ class AccountImportContaplus(Wizard):
         Move = pool.get('account.move')
         Line = pool.get('account.move.line')
         Period = pool.get('account.period')
-        Journal = pool.get('account.journal')
         Party = pool.get('party.party')
 
         to_create = {}
@@ -112,15 +118,19 @@ class AccountImportContaplus(Wizard):
             if not iline.asien in to_create:
                 move = Move()
                 move.number = iline.asien
+
+                if len(Move.search(['number', '=', move.number], limit=1)) > 0:
+                    #self.raise_user_error()
+                    print("duplicated move")
+                    continue
+
                 move.date = iline.fecha
                 move.period = Period.find(Transaction().context.get('company')
                                           , date= move.date )
                 to_create[move.number] = move
-                move.journal = Journal.search([('type', '=', 'general')], limit=1)[0]
+                move.journal = self.start.journal
                 move.lines = []
-                #todo check that move.number not in db already.
 
-                # maybe add select journal to wizard fields
             else:
                 move = to_create[move.number]
 
@@ -130,42 +140,29 @@ class AccountImportContaplus(Wizard):
             if account[:2] in ('40', '41', '43'):
                 party = account
                 account = account[:2] + ('0' * 6)
-            print ('lookup account# "%s"' % account)
+
             accounts = Account.search([('code', '=', account)], limit=1)
             if not accounts:
-                print("missing account")
+                # self.raise_user_error()
+                print("missing account %s" % account)
                 continue
-            # self.raise_user_error()
+
             line.account = accounts[0]
             if party:
                 parties = Party.search([('rec_name', 'ilike', '%' + party)], limit=2)
-                # todo limit 2 and check that we get only one.
                 if (not parties) and (len(parties > 1)):
+                    # self.raise_user_error()
                     print("error party: %s" % party )
                     continue
 
                 line.party = parties[0]
+
             line.debit = iline.euro_debe
             line.credit = iline.euro_haber
-            # line.description =  u" ".join([iline.concepto, iline.documento])
+            line.description = " ".join([iline.concepto, iline.documento])
 
             move.lines = move.lines + (line,)
 
-            # move = Move()
-            # move.post_date =
-            # move.period =
-            # move.journal =
-            # move.description = ''
-            # move.origin =
-            # automatic? move.state =
-
-            # line.debit??
-            # line.credit??
-            # line.party??
-            # move.lines.append()
-
-        print(" ############################## ready to save ###########################")
         if to_create:
             Move.save(to_create.values())
-        print('click ok')
         return 'end'
