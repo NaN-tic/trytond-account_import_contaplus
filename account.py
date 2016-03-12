@@ -101,6 +101,13 @@ class AccountImportContaplus(Wizard):
                       ])
     import_ = StateTransition()
 
+    @classmethod
+    def __setup__(cls):
+        super(AccountImportContaplus, cls).__setup__()
+        cls._error_messages.update({
+                'duplicated move number': ('Duplicated account move number "%(move_number)s".'),
+                })
+
     def transition_import_(self):
         data_file = self.start.data
 
@@ -120,7 +127,8 @@ class AccountImportContaplus(Wizard):
                 move.number = iline.asien
 
                 if len(Move.search(['number', '=', move.number], limit=1)) > 0:
-                    #self.raise_user_error()
+                    self.raise_user_error('duplicated move number',
+                                          {'move_number' : move.number})
                     print("duplicated move")
                     continue
 
