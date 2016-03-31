@@ -93,6 +93,23 @@ def not_balance(move):
     print (credit_debit)
     return credit_debit[0] != credit_debit[1]
 
+
+def complete_account(account, num_digits, fill_with):
+    ret = account
+    while len(ret) < num_digits:
+        ret = ret + fill_with
+    return ret
+
+
+def convert_account(account):
+    # hack some accounts are not correct at import.
+    # if more accounts appear consider using a map.
+    if '4000' == account:
+        return '40099999'
+    else:
+        return account
+
+
 class AccountImportContaplusStart(ModelView):
     'Account Import Contaplus Start'
     __name__ = 'account.import.contaplus.start'
@@ -103,8 +120,6 @@ class AccountImportContaplusStart(ModelView):
     def default_journal():
         Journal = Pool().get('account.journal')
         return Journal.search([('type', '=', 'general')], limit=1)[0].id
-
-
 
 
 class AccountImportContaplus(Wizard):
@@ -121,21 +136,31 @@ class AccountImportContaplus(Wizard):
     def __setup__(cls):
         super(AccountImportContaplus, cls).__setup__()
         cls._error_messages.update({
-                'number exists': ('Duplicated account move number "%(move_number)s".'),
-                'account not found': ('Account "%(account)s" not found '),
-                'party not found': ('Party "%(party)s" not found '),
-                'unbalance lines': ('Unbalance lines')
-                })
+            'number exists': ('Duplicated account move number "%(move_number)s".'),
+            'account not found': ('Account "%(account)s" not found '),
+            'multiple accounts found' : ('Multiple accounts fount for "%(account)s"'),
+            'party not found': ('Party "%(party)s" not found '),
+            'multiple parties found' : ('Multiple parties fount for "%(party)s"'),
+            'unbalance lines': ('Unbalance lines')
+        })
 
     def transition_import_(self):
         data_file = self.start.data
 
+        print(type(self.start.data))
+
+        companyId = Transaction().context.get('company')
+
         pool = Pool()
+        Company = pool.get('company.company')
         Account = pool.get('account.account')
         Move = pool.get('account.move')
         Line = pool.get('account.move.line')
         Period = pool.get('account.period')
         Party = pool.get('party.party')
+
+        company = Company.search(['id', '=', companyId], limit=1)[0]
+        company_party_code = company.party.code
 
         to_create = {}
 
@@ -150,7 +175,7 @@ class AccountImportContaplus(Wizard):
                                           {'move_number' : move.number})
 
                 move.date = iline.fecha
-                move.period = Period.find(Transaction().context.get('company')
+                move.period = Period.find(companyId
                                           , date= move.date )
                 to_create[move.number] = move
                 move.journal = self.start.journal
@@ -162,29 +187,28 @@ class AccountImportContaplus(Wizard):
             line = Line()
             party = None
             account = iline.sub_cta.strip()
-            if account[:2] in ('40', '41', '43'):
-                party = account
+            account = convert_account(account)
+            if account[:2] in ('40', '41', '43', '44'):
+                party = company_party_code + '-' + account
                 account = account[:2] + ('0' * 6)
 
-            accounts = Account.search([('code', '=', account)], limit=1)
+            accounts = Account.search([('code', '=', account)], limit=2)
             if not accounts:
                 self.raise_user_error('account not found', {'account': account})
-                # print('account "%s" not found' % account)
-                # continue
-
+            if (len(accounts) > 1):
+                self.raise_user_error('multiple accounts found', {'account': account})
             line.account = accounts[0]
             if party:
                 parties = Party.search([('rec_name', 'ilike', '%' + party)], limit=2)
-                if (not parties) and (len(parties > 1)):
+                if not parties:
                     self.raise_user_error('party not found', {'party': party})
-                    # print("no party found")
-                    # continue
-
+                if (len(parties) > 1):
+                    self.raise_user_error('multiple parties found', {'party': party})
                 line.party = parties[0]
 
             # swap debe haber in some cases due to error.
             # in caja the concepto/clave determines if it is debe or haber.
-            if iline.concepto.strip in ('',
+            if iline.concepto.strip() in ('',
                                         'TALON RTTE',
                                         'CLAVE MANUAL',
                                         'PAGO ITV',
