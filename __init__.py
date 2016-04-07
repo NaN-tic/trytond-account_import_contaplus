@@ -7,6 +7,8 @@ from .account import *
 def register():
     Pool.register(
         AccountImportContaplusStart,
+        ImportRecord,
+        Move,
         module='account_import_contaplus', type_='model')
     Pool.register(
         AccountImportContaplus,

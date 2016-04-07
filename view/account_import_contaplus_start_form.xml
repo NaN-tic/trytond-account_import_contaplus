@@ -2,8 +2,12 @@
 <!-- The COPYRIGHT file at the top level of this repository contains the full
      copyright notices and license terms. -->
 <form string="Account Import Contaplus Start">
+    <label name="name"/>
+    <field name="name"/>
     <label name="data"/>
     <field name="data"/>
     <label name="journal"/>
     <field name="journal"/>
+    <label name="is_invoice"/>
+    <field name="is_invoice"/>
 </form>

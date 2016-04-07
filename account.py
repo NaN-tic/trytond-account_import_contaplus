@@ -2,15 +2,15 @@ from retrofix.exception import RetrofixException
 from retrofix.fields import *
 from retrofix.record import Record
 from decimal import Decimal
+from datetime import datetime
 
-
-from trytond.model import ModelView, fields
-from trytond.pool import Pool
+from trytond.model import ModelView, ModelSQL, fields
+from trytond.pool import Pool, PoolMeta
 from trytond.wizard import Wizard, StateTransition, StateView, Button
 from trytond.transaction import Transaction
 
 
-__all__ = ['AccountImportContaplus', 'AccountImportContaplusStart']
+__all__ = ['AccountImportContaplus', 'AccountImportContaplusStart', 'ImportRecord', 'Move']
 
 
 class DecimalField(Field):
@@ -110,11 +110,34 @@ def convert_account(account):
         return account
 
 
+class Move:
+    __name__ = 'account.move'
+    # seach this 'class' account.move in the list of register entities in Pool.
+    __metaclass__ = PoolMeta
+
+    @classmethod
+    def _get_origin(cls):
+        'Return list of Model names for origin Reference'
+        return super(Move,cls)._get_origin() +  ['import.record']
+
+
+class ImportRecord(ModelSQL, ModelView):
+    'Import Record'
+    __name__ = 'import.record'
+    _rec_name = 'filename'
+    # filename
+    filename = fields.Char('File Name')
+
+
 class AccountImportContaplusStart(ModelView):
     'Account Import Contaplus Start'
     __name__ = 'account.import.contaplus.start'
-    data = fields.Binary('File', required=True)
+    name = fields.Char('Name', states={'readonly': True}, required=True)
+    data = fields.Binary('File', filename='name', required=True,
+                         depends=['name'])
     journal = fields.Many2One('account.journal', 'Journal', required=True)
+    is_invoice = fields.Boolean('Invoice?')
+
 
     @staticmethod
     def default_journal():
@@ -147,7 +170,7 @@ class AccountImportContaplus(Wizard):
     def transition_import_(self):
         data_file = self.start.data
 
-        print(type(self.start.data))
+        # print(self.start.name)
 
         companyId = Transaction().context.get('company')
 
@@ -158,16 +181,30 @@ class AccountImportContaplus(Wizard):
         Line = pool.get('account.move.line')
         Period = pool.get('account.period')
         Party = pool.get('party.party')
+        ImpRecord = pool.get('import.record')
+        Attachment = pool.get('ir.attachment')
 
         company = Company.search(['id', '=', companyId], limit=1)[0]
         company_party_code = company.party.code
 
-        to_create = {}
+        imp_record = ImpRecord()
+        imp_record.filename = self.start.name
+        imp_record.save()
 
+        attachment = Attachment()
+        attachment.name = imp_record.filename
+        attachment.resource = imp_record
+        attachment.data = data_file
+        attachment.save()
+
+
+        to_create = {}
         for iline in read(str(data_file)):
 
             if not iline.asien in to_create:
                 move = Move()
+                move.origin = imp_record
+                # move.origin_type =
                 move.number = iline.asien
 
                 if len(Move.search(['number', '=', move.number], limit=1)) > 0:
@@ -189,6 +226,7 @@ class AccountImportContaplus(Wizard):
             account = iline.sub_cta.strip()
             account = convert_account(account)
             if account[:2] in ('40', '41', '43', '44'):
+                #PREGUNTAR Albert 44 no te tercers?
                 party = company_party_code + '-' + account
                 account = account[:2] + ('0' * 6)
 
@@ -230,4 +268,5 @@ class AccountImportContaplus(Wizard):
             self.raise_user_error('unbalance lines')
         if to_create:
             Move.save(to_create.values())
+
         return 'end'
