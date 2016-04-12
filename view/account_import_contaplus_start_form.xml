@@ -6,8 +6,8 @@
     <field name="name"/>
     <label name="data"/>
     <field name="data"/>
-    <label name="journal"/>
-    <field name="journal"/>
     <label name="is_invoice"/>
     <field name="is_invoice"/>
+    <label name="journal"/>
+    <field name="journal"/>
 </form>

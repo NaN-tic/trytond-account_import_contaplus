@@ -141,11 +141,30 @@ class ImportRecord(ModelSQL, ModelView):
 class AccountImportContaplusStart(ModelView):
     'Account Import Contaplus Start'
     __name__ = 'account.import.contaplus.start'
-    name = fields.Char('Name', states={'readonly': True}, required=True)
+    name = fields.Char('Name', states={'read only': True}, required=True)
     data = fields.Binary('File', filename='name', required=True,
                          depends=['name'])
-    journal = fields.Many2One('account.journal', 'Journal', required=True)
     is_invoice = fields.Boolean('Invoice?')
+    journal = fields.Many2One('account.journal', 'Journal', required=True)
+
+    @fields.depends('is_invoice')
+    def on_change_is_invoice(self):
+        journal_type = 'revenue' if self.is_invoice else 'general'
+        Journal = Pool().get('account.journal')
+        self.journal = Journal.search([('type', "=", journal_type)],
+                                      limit=1)[0].id
+
+    @fields.depends('data')
+    def on_change_data(self):
+        print("change data")
+        inv = False
+        for iline in read_all(str(self.data)):
+            if len(iline.contra.strip()) > 0:
+                inv = True
+                continue
+        print(inv)
+        self.is_invoice = inv
+        self.on_change_is_invoice()
 
     @staticmethod
     def default_journal():
@@ -227,7 +246,7 @@ class AccountImportContaplus(Wizard):
             party = None
             account = iline.sub_cta.strip()
             account = convert_account(account)
-            if account[:2] in ('40', '41', '43', '44'):
+            if account[:2] in ('40', '41', '43'):
                 party = company.party.code + '-' + account
                 account = account[:2] + ('0' * 6)
 
