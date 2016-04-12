@@ -9,6 +9,7 @@ def register():
         AccountImportContaplusStart,
         ImportRecord,
         Move,
+        Invoice,
         module='account_import_contaplus', type_='model')
     Pool.register(
         AccountImportContaplus,

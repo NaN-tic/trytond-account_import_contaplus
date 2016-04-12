@@ -2,7 +2,6 @@ from retrofix.exception import RetrofixException
 from retrofix.fields import *
 from retrofix.record import Record
 from decimal import Decimal
-from datetime import datetime
 
 from trytond.model import ModelView, ModelSQL, fields
 from trytond.pool import Pool, PoolMeta
@@ -10,7 +9,7 @@ from trytond.wizard import Wizard, StateTransition, StateView, Button
 from trytond.transaction import Transaction
 
 
-__all__ = ['AccountImportContaplus', 'AccountImportContaplusStart', 'ImportRecord', 'Move']
+__all__ = ['AccountImportContaplus', 'AccountImportContaplusStart', 'ImportRecord', 'Move', 'Invoice']
 
 
 class DecimalField(Field):
@@ -118,7 +117,17 @@ class Move:
     @classmethod
     def _get_origin(cls):
         'Return list of Model names for origin Reference'
-        return super(Move,cls)._get_origin() +  ['import.record']
+        return super(Move, cls)._get_origin() +  ['import.record']
+
+
+class Invoice:
+    __name__ = 'account.invoice'
+    __metaclass__ = PoolMeta
+
+    @classmethod
+    def _get_origin(cls):
+        'Return list of Model names for origin Reference'
+        return super(Invoice, cls)._get_origin() +  ['import.record']
 
 
 class ImportRecord(ModelSQL, ModelView):
@@ -167,39 +176,32 @@ class AccountImportContaplus(Wizard):
             'unbalance lines': ('Unbalance lines')
         })
 
-    def transition_import_(self):
-        data_file = self.start.data
+    def get_party(self, party):
+        Party = Pool().get('party.party')
+        parties = Party.search([('rec_name', 'ilike', '%' + party)], limit=2)
+        if not parties:
+            self.raise_user_error('party not found', {'party': party})
+        if (len(parties) > 1):
+            self.raise_user_error('multiple parties found', {'party': party})
+        return parties[0]
 
-        # print(self.start.name)
+    def get_account(self, account):
+        Account = Pool().get('account.account')
+        accounts = Account.search([('code', '=', account)], limit=2)
+        if not accounts:
+            self.raise_user_error('account not found', {'account': account})
+        if (len(accounts) > 1):
+            self.raise_user_error('multiple accounts found', {'account': account})
+        return accounts[0]
 
-        companyId = Transaction().context.get('company')
-
+    def import_moves(self, company, imp_record):
         pool = Pool()
-        Company = pool.get('company.company')
-        Account = pool.get('account.account')
         Move = pool.get('account.move')
         Line = pool.get('account.move.line')
         Period = pool.get('account.period')
-        Party = pool.get('party.party')
-        ImpRecord = pool.get('import.record')
-        Attachment = pool.get('ir.attachment')
-
-        company = Company.search(['id', '=', companyId], limit=1)[0]
-        company_party_code = company.party.code
-
-        imp_record = ImpRecord()
-        imp_record.filename = self.start.name
-        imp_record.save()
-
-        attachment = Attachment()
-        attachment.name = imp_record.filename
-        attachment.resource = imp_record
-        attachment.data = data_file
-        attachment.save()
-
 
         to_create = {}
-        for iline in read(str(data_file)):
+        for iline in read(str(self.start.data)):
 
             if not iline.asien in to_create:
                 move = Move()
@@ -212,7 +214,7 @@ class AccountImportContaplus(Wizard):
                                           {'move_number' : move.number})
 
                 move.date = iline.fecha
-                move.period = Period.find(companyId
+                move.period = Period.find(company.id
                                           , date= move.date )
                 to_create[move.number] = move
                 move.journal = self.start.journal
@@ -227,22 +229,12 @@ class AccountImportContaplus(Wizard):
             account = convert_account(account)
             if account[:2] in ('40', '41', '43', '44'):
                 #PREGUNTAR Albert 44 no te tercers?
-                party = company_party_code + '-' + account
+                party = company.party.code + '-' + account
                 account = account[:2] + ('0' * 6)
 
-            accounts = Account.search([('code', '=', account)], limit=2)
-            if not accounts:
-                self.raise_user_error('account not found', {'account': account})
-            if (len(accounts) > 1):
-                self.raise_user_error('multiple accounts found', {'account': account})
-            line.account = accounts[0]
+            line.account = get_account(account)
             if party:
-                parties = Party.search([('rec_name', 'ilike', '%' + party)], limit=2)
-                if not parties:
-                    self.raise_user_error('party not found', {'party': party})
-                if (len(parties) > 1):
-                    self.raise_user_error('multiple parties found', {'party': party})
-                line.party = parties[0]
+                line.party = self.get_party(party)
 
             # swap debe haber in some cases due to error.
             # in caja the concepto/clave determines if it is debe or haber.
@@ -268,5 +260,138 @@ class AccountImportContaplus(Wizard):
             self.raise_user_error('unbalance lines')
         if to_create:
             Move.save(to_create.values())
+        #return created moves
+        return to_create
+
+    def import_invoices(self, company, imp_record):
+
+        pool = Pool()
+        Invoice = pool.get('account.invoice')
+        Line = pool.get('account.invoice.line')
+
+        ModelData = pool.get('ir.model.data')
+        Tax = pool.get('account.tax')
+
+        t_vat_21 = Tax(ModelData.get_id('account_es', 'iva_rep_21'))
+        t_vat_0 = Tax(ModelData.get_id('account_es', 'iva_rep_ex'))
+        vat_21, = Tax.search([('template', '=', t_vat_21)], limit=1)
+        vat_0, = Tax.search([('template', '=', t_vat_0)], limit=1)
+
+        to_create = {}
+        current_iva = False
+        current_total = 0
+        invoice = None
+        for iline in read(str(self.start.data)):
+            if not iline.factura in to_create:
+                if invoice:
+                    # check factura
+                    # if lines empty remove from to_create
+                    if len(invoice.lines) == 0:
+                        del to_create[invoice.number]
+
+                    if current_iva:
+                        vat = vat_21
+                    else:
+                        vat = vat_0
+
+                    for line in invoice.lines:
+                        line.taxes = [vat]
+                    # invoice.on_change_taxes()
+                    # Invoice.update_taxes(invoice)
+
+                current_iva = False
+                invoice = Invoice()
+                invoice.company = company
+                invoice.currency = company.currency
+                invoice.origin = imp_record
+                invoice.number = iline.factura
+                invoice.invoice_date = iline.fecha
+                invoice.type = 'out_invoice'
+                invoice.journal = self.start.journal
+                to_create[invoice.number] = invoice
+                invoice.lines = []
+
+            account = iline.sub_cta.strip()
+            if account[:2] == '43':
+                party = company.party.code + '-' + account
+                print(party)
+                print(Transaction().context.get('company'))
+                invoice.party = self.get_party(party)
+                print(invoice.party.id)
+                current_total = iline.euro_debe
+                invoice.on_change_party()
+
+            if account[:1] == '7':
+                line = Line()
+                line.account = self.get_account(iline.sub_cta.strip())
+                line.quantity = 1
+                line.unit_price = iline.euro_haber
+                line.description = iline.concepto
+                invoice.lines = invoice.lines + (line,)
+
+            if account[:3] == '477':
+                current_iva = True
+
+            # total factura
+            # invoice.total_amount  # check against 430
+            # total tax
+            # invoice.tax_amount # check if wanted against 477
+
+        #todo duplicated code
+        if invoice:
+            # check factura
+            # if lines empty remove from to_create
+            if len(invoice.lines) == 0:
+                del to_create[invoice.number]
+
+            if current_iva:
+                vat = vat_21
+            else:
+                vat = vat_0
+
+            for line in invoice.lines:
+                line.taxes = [vat]
+            # invoice.on_change_taxes()
+            #Invoice.update_taxes([invoice])
+
+        if to_create:
+            Invoice.save(to_create.values())
+            Invoice.update_taxes(to_create.values())
+
+        return to_create
+
+    def create_import_record(self):
+        pool = Pool()
+        ImpRecord = pool.get('import.record')
+        Attachment = pool.get('ir.attachment')
+
+        imp_record = ImpRecord()
+        imp_record.filename = self.start.name
+        imp_record.save()
+
+        attachment = Attachment()
+        attachment.name = imp_record.filename
+        attachment.resource = imp_record
+        attachment.data = self.start.data
+        attachment.save()
+
+        return imp_record
+
+    def transition_import_(self):
+        data_file = self.start.data
+
+        # print(self.start.name)
+        pool = Pool()
+        Company = pool.get('company.company')
+
+        company_id = Transaction().context.get('company')
+        company = Company(company_id)
+
+        imp_record = self.create_import_record()
+
+        if (self.start.is_invoice):
+            self.import_invoices(company, imp_record)
+        else:
+            self.import_moves(company, imp_record)
 
         return 'end'
