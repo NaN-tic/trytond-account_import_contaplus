@@ -1,5 +1,5 @@
 from retrofix.exception import RetrofixException
-from retrofix.fields import *
+from retrofix.fields import Char, Date, Field, Integer
 from retrofix.record import Record
 from decimal import Decimal
 
@@ -147,7 +147,6 @@ class AccountImportContaplusStart(ModelView):
     journal = fields.Many2One('account.journal', 'Journal', required=True)
     is_invoice = fields.Boolean('Invoice?')
 
-
     @staticmethod
     def default_journal():
         Journal = Pool().get('account.journal')
@@ -173,7 +172,8 @@ class AccountImportContaplus(Wizard):
             'multiple accounts found' : ('Multiple accounts fount for "%(account)s"'),
             'party not found': ('Party "%(party)s" not found '),
             'multiple parties found' : ('Multiple parties fount for "%(party)s"'),
-            'unbalance lines': ('Unbalance lines')
+            'unbalance lines': ('Unbalance lines'),
+            'unmatch total invoice': ('Total for %(invoice)s does not match')
         })
 
     def get_party(self, party):
@@ -191,7 +191,8 @@ class AccountImportContaplus(Wizard):
         if not accounts:
             self.raise_user_error('account not found', {'account': account})
         if (len(accounts) > 1):
-            self.raise_user_error('multiple accounts found', {'account': account})
+            self.raise_user_error('multiple accounts found',
+                                  {'account': account})
         return accounts[0]
 
     def import_moves(self, company, imp_record):
@@ -203,7 +204,7 @@ class AccountImportContaplus(Wizard):
         to_create = {}
         for iline in read(str(self.start.data)):
 
-            if not iline.asien in to_create:
+            if iline.asien not in to_create:
                 move = Move()
                 move.origin = imp_record
                 # move.origin_type =
@@ -211,11 +212,10 @@ class AccountImportContaplus(Wizard):
 
                 if len(Move.search(['number', '=', move.number], limit=1)) > 0:
                     self.raise_user_error('number exists',
-                                          {'move_number' : move.number})
+                                          {'move_number': move.number})
 
                 move.date = iline.fecha
-                move.period = Period.find(company.id
-                                          , date= move.date )
+                move.period = Period.find(company.id, date=move.date)
                 to_create[move.number] = move
                 move.journal = self.start.journal
                 move.lines = []
@@ -228,11 +228,10 @@ class AccountImportContaplus(Wizard):
             account = iline.sub_cta.strip()
             account = convert_account(account)
             if account[:2] in ('40', '41', '43', '44'):
-                #PREGUNTAR Albert 44 no te tercers?
                 party = company.party.code + '-' + account
                 account = account[:2] + ('0' * 6)
 
-            line.account = get_account(account)
+            line.account = self.get_account(account)
             if party:
                 line.party = self.get_party(party)
 
@@ -260,8 +259,20 @@ class AccountImportContaplus(Wizard):
             self.raise_user_error('unbalance lines')
         if to_create:
             Move.save(to_create.values())
-        #return created moves
+        # return created moves
         return to_create
+
+    def check_totals(self, invoices, totals):
+        for invoice in invoices.values():
+            if not invoice.total_amount == totals[invoice.number]:
+                self.raise_user_error('unmatch total invoice',
+                                      {'invoice': invoice.number})
+        return True
+
+    def add_tax_invoice(self, invoice, vat):
+        for line in invoice.lines:
+            line.taxes = [vat]
+        return invoice
 
     def import_invoices(self, company, imp_record):
 
@@ -278,28 +289,21 @@ class AccountImportContaplus(Wizard):
         vat_0, = Tax.search([('template', '=', t_vat_0)], limit=1)
 
         to_create = {}
-        current_iva = False
-        current_total = 0
-        invoice = None
+        vat = vat_0   # default vat no taxes
+        totals = {}
+        invoice = None   # current invoice
         for iline in read(str(self.start.data)):
-            if not iline.factura in to_create:
+            iline.factura = iline.factura.strip()
+            if iline.factura not in to_create:
                 if invoice:
                     # check factura
                     # if lines empty remove from to_create
                     if len(invoice.lines) == 0:
                         del to_create[invoice.number]
 
-                    if current_iva:
-                        vat = vat_21
-                    else:
-                        vat = vat_0
+                    self.add_tax_invoice(invoice, vat)
 
-                    for line in invoice.lines:
-                        line.taxes = [vat]
-                    # invoice.on_change_taxes()
-                    # Invoice.update_taxes(invoice)
-
-                current_iva = False
+                vat = vat_0   # default vat no taxes
                 invoice = Invoice()
                 invoice.company = company
                 invoice.currency = company.currency
@@ -314,14 +318,14 @@ class AccountImportContaplus(Wizard):
             account = iline.sub_cta.strip()
             if account[:2] == '43':
                 party = company.party.code + '-' + account
-                print(party)
-                print(Transaction().context.get('company'))
+                # print(party)
+                # print(Transaction().context.get('company'))
                 invoice.party = self.get_party(party)
-                print(invoice.party.id)
-                current_total = iline.euro_debe
+                # print(invoice.party.id)
+                totals[invoice.number] = iline.euro_debe
                 invoice.on_change_party()
 
-            if account[:1] == '7':
+            if account[:1] == '7' or account[:2] == '44':
                 line = Line()
                 line.account = self.get_account(iline.sub_cta.strip())
                 line.quantity = 1
@@ -330,33 +334,27 @@ class AccountImportContaplus(Wizard):
                 invoice.lines = invoice.lines + (line,)
 
             if account[:3] == '477':
-                current_iva = True
+                vat = vat_21
 
             # total factura
             # invoice.total_amount  # check against 430
             # total tax
             # invoice.tax_amount # check if wanted against 477
 
-        #todo duplicated code
+        # todo duplicated code
         if invoice:
             # check factura
             # if lines empty remove from to_create
             if len(invoice.lines) == 0:
                 del to_create[invoice.number]
 
-            if current_iva:
-                vat = vat_21
-            else:
-                vat = vat_0
-
-            for line in invoice.lines:
-                line.taxes = [vat]
-            # invoice.on_change_taxes()
-            #Invoice.update_taxes([invoice])
+            self.add_tax_invoice(invoice, vat)
 
         if to_create:
             Invoice.save(to_create.values())
             Invoice.update_taxes(to_create.values())
+
+        self.check_totals(to_create,totals)
 
         return to_create
 
