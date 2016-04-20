@@ -9,7 +9,8 @@ from trytond.wizard import Wizard, StateTransition, StateView, Button
 from trytond.transaction import Transaction
 
 
-__all__ = ['AccountImportContaplus', 'AccountImportContaplusStart', 'ImportRecord', 'Move', 'Invoice']
+__all__ = ['AccountImportContaplus', 'AccountImportContaplusStart',
+           'ImportRecord', 'Move', 'Invoice']
 
 
 class DecimalField(Field):
@@ -161,8 +162,8 @@ class AccountImportContaplusStart(ModelView):
         for iline in read_all(str(self.data)):
             if len(iline.contra.strip()) > 0:
                 inv = True
-                continue
-        print(inv)
+                break
+        # print(inv)
         self.is_invoice = inv
         self.on_change_is_invoice()
 
