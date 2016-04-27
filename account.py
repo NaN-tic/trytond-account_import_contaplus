@@ -222,13 +222,15 @@ class AccountImportContaplus(Wizard):
         Period = pool.get('account.period')
 
         to_create = {}
+        pre = "ALE-"
         for iline in read(str(self.start.data)):
+            asien = pre + iline.asien
 
-            if iline.asien not in to_create:
+            if asien not in to_create:
                 move = Move()
                 move.origin = imp_record
                 # move.origin_type =
-                move.number = iline.asien
+                move.number = asien
 
                 if len(Move.search(['number', '=', move.number], limit=1)) > 0:
                     self.raise_user_error('number exists',
@@ -315,11 +317,14 @@ class AccountImportContaplus(Wizard):
         for iline in read(str(self.start.data)):
             iline.factura = iline.factura.strip()
             if iline.factura not in to_create:
+                # todo check num factura not alredy there.
                 if invoice:
                     # check factura
                     # if lines empty remove from to_create
                     if len(invoice.lines) == 0:
                         del to_create[invoice.number]
+
+
 
                     self.add_tax_invoice(invoice, vat)
 
