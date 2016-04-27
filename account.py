@@ -89,8 +89,8 @@ def not_balance(move):
         add_tupla2(t_cd, (line.credit, line.debit)),
         move.lines,
         [0,0])
-    print (move.number)
-    print (credit_debit)
+    # print (move.number)
+    # print (credit_debit)
     return credit_debit[0] != credit_debit[1]
 
 
@@ -157,7 +157,7 @@ class AccountImportContaplusStart(ModelView):
 
     @fields.depends('data')
     def on_change_data(self):
-        print("change data")
+        # print("change data")
         inv = False
         for iline in read_all(str(self.data)):
             if len(iline.contra.strip()) > 0:
@@ -193,7 +193,8 @@ class AccountImportContaplus(Wizard):
             'party not found': ('Party "%(party)s" not found '),
             'multiple parties found' : ('Multiple parties fount for "%(party)s"'),
             'unbalance lines': ('Unbalance lines'),
-            'unmatch total invoice': ('Total for %(invoice)s does not match')
+            'unmatch total invoice': ('Total for %(invoice)s does not match'),
+            'missing payment terms': ('Payment terms missing for %(party)s.')
         })
 
     def get_party(self, party):
@@ -324,8 +325,6 @@ class AccountImportContaplus(Wizard):
                     if len(invoice.lines) == 0:
                         del to_create[invoice.number]
 
-
-
                     self.add_tax_invoice(invoice, vat)
 
                 vat = vat_0   # default vat no taxes
@@ -342,10 +341,15 @@ class AccountImportContaplus(Wizard):
 
             account = iline.sub_cta.strip()
             if account[:2] == '43':
-                party = company.party.code + '-' + account
+                party_code = company.party.code + '-' + account
+                party = self.get_party(party_code)
+
+                if (party.customer_payment_term is None):
+                    self.raise_user_error('missing payment terms',
+                                      {'party': party.name})
                 # print(party)
                 # print(Transaction().context.get('company'))
-                invoice.party = self.get_party(party)
+                invoice.party = party
                 # print(invoice.party.id)
                 totals[invoice.number] = iline.euro_debe
                 invoice.on_change_party()
@@ -379,7 +383,7 @@ class AccountImportContaplus(Wizard):
             Invoice.save(to_create.values())
             Invoice.update_taxes(to_create.values())
 
-        self.check_totals(to_create,totals)
+        self.check_totals(to_create, totals)
 
         return to_create
 
@@ -401,7 +405,6 @@ class AccountImportContaplus(Wizard):
         return imp_record
 
     def transition_import_(self):
-        data_file = self.start.data
 
         # print(self.start.name)
         pool = Pool()
