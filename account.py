@@ -233,14 +233,15 @@ class AccountImportContaplus(Wizard):
                 # move.origin_type =
                 move.number = asien
 
-                if len(Move.search(['number', '=', move.number], limit=1)) > 0:
+                if len(Move.search(['number', '=', asien], limit=1)) > 0:
                     self.raise_user_error('number exists',
-                                          {'move_number': move.number})
+                                          {'move_number': asien})
 
                 move.date = iline.fecha
                 move.period = Period.find(company.id, date=move.date)
                 to_create[move.number] = move
                 move.journal = self.start.journal
+                move.description = " ".join([iline.concepto, iline.documento])
                 move.lines = []
 
             else:
@@ -282,6 +283,7 @@ class AccountImportContaplus(Wizard):
             self.raise_user_error('unbalance lines')
         if to_create:
             Move.save(to_create.values())
+            Move.post(to_create.values())
         # return created moves
         return to_create
 
@@ -382,6 +384,7 @@ class AccountImportContaplus(Wizard):
         if to_create:
             Invoice.save(to_create.values())
             Invoice.update_taxes(to_create.values())
+            Invoice.post(to_create.values())
 
         self.check_totals(to_create, totals)
 
