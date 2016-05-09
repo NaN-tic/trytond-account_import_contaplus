@@ -266,6 +266,7 @@ class AccountImportContaplus(Wizard):
                                         'CLAVE MANUAL',
                                         'PAGO ITV',
                                         'DESEMBOLSO',
+                                        'TRASP. A BAN',
                                         'TRASP. A BANC',
                                         'ANTICP-VALES'):
                 line.debit = iline.euro_haber + iline.euro_debe
