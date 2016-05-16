@@ -361,8 +361,14 @@ class AccountImportContaplus(Wizard):
                 line = Line()
                 line.account = self.get_account(iline.sub_cta.strip())
                 line.quantity = 1
-                line.unit_price = iline.euro_haber
-                line.description = iline.concepto
+                if iline.concepto.strip() == 'DIFERENCIA PORTE':
+                    line.unit_price = iline.euro_haber * -1
+                else:
+                    line.unit_price = iline.euro_haber
+                # TODO
+                # if iline.concepto.strip() == 'AVERIAS/FALTAS/R':
+                #    line.taxes =
+                line.description = iline.concepto.strip()
                 invoice.lines = invoice.lines + (line,)
 
             if account[:3] == '477':
