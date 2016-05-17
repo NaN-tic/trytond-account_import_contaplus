@@ -297,7 +297,9 @@ class AccountImportContaplus(Wizard):
 
     def add_tax_invoice(self, invoice, vat):
         for line in invoice.lines:
-            line.taxes = [vat]
+            # only add for lines that do not have taxes
+            if len(line.taxes) == 0:
+                line.taxes = [vat]
         return invoice
 
     def import_invoices(self, company, imp_record):
@@ -361,13 +363,17 @@ class AccountImportContaplus(Wizard):
                 line = Line()
                 line.account = self.get_account(iline.sub_cta.strip())
                 line.quantity = 1
+
                 if iline.concepto.strip() == 'DIFERENCIA PORTE':
                     line.unit_price = iline.euro_haber * -1
                 else:
                     line.unit_price = iline.euro_haber
-                # TODO
-                # if iline.concepto.strip() == 'AVERIAS/FALTAS/R':
-                #    line.taxes =
+
+                if iline.concepto.strip() == 'AVERIAS/FALTAS/R':
+                    line.taxes = [vat_0]
+                else:
+                    line.taxes = []
+
                 line.description = iline.concepto.strip()
                 invoice.lines = invoice.lines + (line,)
 
