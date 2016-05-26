@@ -290,6 +290,8 @@ class AccountImportContaplus(Wizard):
 
     def check_totals(self, invoices, totals):
         for invoice in invoices.values():
+            print(invoice.total_amount)
+            print(totals[invoice.number])
             if not invoice.total_amount == totals[invoice.number]:
                 self.raise_user_error('unmatch total invoice',
                                       {'invoice': invoice.number})
@@ -300,6 +302,9 @@ class AccountImportContaplus(Wizard):
             # only add for lines that do not have taxes
             if len(line.taxes) == 0:
                 line.taxes = [vat]
+                print (vat.name)
+                print ("adding tax")
+                print (line.unit_price)
         return invoice
 
     def import_invoices(self, company, imp_record):
@@ -356,7 +361,7 @@ class AccountImportContaplus(Wizard):
                 # print(Transaction().context.get('company'))
                 invoice.party = party
                 # print(invoice.party.id)
-                totals[invoice.number] = iline.euro_debe
+                totals[invoice.number] = iline.euro_debe + iline.euro_haber
                 invoice.on_change_party()
 
             if account[:1] == '7' or account[:2] == '44':
