@@ -89,8 +89,6 @@ def not_balance(move):
         add_tupla2(t_cd, (line.credit, line.debit)),
         move.lines,
         [0,0])
-    # print (move.number)
-    # print (credit_debit)
     return credit_debit[0] != credit_debit[1]
 
 
@@ -157,13 +155,11 @@ class AccountImportContaplusStart(ModelView):
 
     @fields.depends('data')
     def on_change_data(self):
-        # print("change data")
         inv = False
         for iline in read_all(str(self.data)):
             if len(iline.contra.strip()) > 0:
                 inv = True
                 break
-        # print(inv)
         self.is_invoice = inv
         self.on_change_is_invoice()
 
@@ -290,8 +286,6 @@ class AccountImportContaplus(Wizard):
 
     def check_totals(self, invoices, totals):
         for invoice in invoices.values():
-            print(invoice.total_amount)
-            print(totals[invoice.number])
             if not invoice.total_amount == totals[invoice.number]:
                 self.raise_user_error('unmatch total invoice',
                                       {'invoice': invoice.number})
@@ -302,9 +296,6 @@ class AccountImportContaplus(Wizard):
             # only add for lines that do not have taxes
             if len(line.taxes) == 0:
                 line.taxes = [vat]
-                print (vat.name)
-                print ("adding tax")
-                print (line.unit_price)
         return invoice
 
     def import_invoices(self, company, imp_record):
@@ -357,10 +348,7 @@ class AccountImportContaplus(Wizard):
                 if (party.customer_payment_term is None):
                     self.raise_user_error('missing payment terms',
                                       {'party': party.name})
-                # print(party)
-                # print(Transaction().context.get('company'))
                 invoice.party = party
-                # print(invoice.party.id)
                 totals[invoice.number] = iline.euro_debe + iline.euro_haber
                 invoice.on_change_party()
 
@@ -384,11 +372,6 @@ class AccountImportContaplus(Wizard):
 
             if account[:3] == '477':
                 vat = vat_21
-
-            # total factura
-            # invoice.total_amount  # check against 430
-            # total tax
-            # invoice.tax_amount # check if wanted against 477
 
         # todo duplicated code
         if invoice:
@@ -427,7 +410,6 @@ class AccountImportContaplus(Wizard):
 
     def transition_import_(self):
 
-        # print(self.start.name)
         pool = Pool()
         Company = pool.get('company.company')
 
