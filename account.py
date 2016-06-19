@@ -1,3 +1,4 @@
+import logging
 from retrofix.exception import RetrofixException
 from retrofix.fields import Char, Date, Field, Integer
 from retrofix.record import Record
@@ -12,6 +13,7 @@ from trytond.transaction import Transaction
 __all__ = ['AccountImportContaplus', 'AccountImportContaplusStart',
            'ImportRecord', 'Move', 'Invoice']
 
+logger = logging.getLogger(__name__)
 
 class DecimalField(Field):
     # decimals in files are separated by period '.'
@@ -88,7 +90,7 @@ def not_balance(move):
         lambda t_cd, line:
         add_tupla2(t_cd, (line.credit, line.debit)),
         move.lines,
-        [0,0])
+        [0, 0])
     return credit_debit[0] != credit_debit[1]
 
 
@@ -116,7 +118,7 @@ class Move:
     @classmethod
     def _get_origin(cls):
         'Return list of Model names for origin Reference'
-        return super(Move, cls)._get_origin() +  ['import.record']
+        return super(Move, cls)._get_origin() + ['import.record']
 
 
 class Invoice:
@@ -126,7 +128,7 @@ class Invoice:
     @classmethod
     def _get_origin(cls):
         'Return list of Model names for origin Reference'
-        return super(Invoice, cls)._get_origin() +  ['import.record']
+        return super(Invoice, cls)._get_origin() + ['import.record']
 
 
 class ImportRecord(ModelSQL, ModelView):
@@ -258,13 +260,14 @@ class AccountImportContaplus(Wizard):
             # swap debe haber in some cases due to error.
             # in caja the concepto/clave determines if it is debe or haber.
             if iline.concepto.strip() in ('',
-                                        'TALON RTTE',
-                                        'CLAVE MANUAL',
-                                        'PAGO ITV',
-                                        'DESEMBOLSO',
-                                        'TRASP. A BAN',
-                                        'TRASP. A BANC',
-                                        'ANTICP-VALES'):
+                                          'TALON RTTE',
+                                          'CLAVE MANUAL',
+                                          'PAGO ITV',
+                                          'DESEMBOLSO',
+                                          'TRASP. A BAN',
+                                          'TRASP. A BANC',
+                                          'ANTICP-VALES',
+                                          'cierre de caja'):
                 line.debit = iline.euro_haber + iline.euro_debe
                 line.credit = 0
             else:
@@ -287,6 +290,11 @@ class AccountImportContaplus(Wizard):
     def check_totals(self, invoices, totals):
         for invoice in invoices.values():
             if not invoice.total_amount == totals[invoice.number]:
+                logger.info('unmatch total')
+                logger.info(invoice.total_amount)
+                logger.info(totals[invoice.number])
+                for line in invoice.lines:
+                    logger.info(line.unit_price)
                 self.raise_user_error('unmatch total invoice',
                                       {'invoice': invoice.number})
         return True
@@ -300,6 +308,7 @@ class AccountImportContaplus(Wizard):
 
     def import_invoices(self, company, imp_record):
 
+        logger.info("start import invoice")
         pool = Pool()
         Invoice = pool.get('account.invoice')
         Line = pool.get('account.invoice.line')
@@ -383,11 +392,18 @@ class AccountImportContaplus(Wizard):
             self.add_tax_invoice(invoice, vat)
 
         if to_create:
+            logger.info("save")
             Invoice.save(to_create.values())
+            logger.info("update_taxes")
             Invoice.update_taxes(to_create.values())
+            logger.info("check total")
+            self.check_totals(to_create, totals)
+            logger.info("post")
+            # for inv in to_create.values():
+            #     print("posting")
+            #     print(inv.number)
+            #     Invoice.post([inv])
             Invoice.post(to_create.values())
-
-        self.check_totals(to_create, totals)
 
         return to_create
 
