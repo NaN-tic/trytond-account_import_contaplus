@@ -91,6 +91,8 @@ def not_balance(move):
         add_tupla2(t_cd, (line.credit, line.debit)),
         move.lines,
         [0, 0])
+    logger.info('credit %f, debit %f
+' % (credit_debit[0], credit_debit[1]))
     return credit_debit[0] != credit_debit[1]
 
 
@@ -266,8 +268,9 @@ class AccountImportContaplus(Wizard):
                                           'DESEMBOLSO',
                                           'TRASP. A BAN',
                                           'TRASP. A BANC',
-                                          'ANTICP-VALES',
-                                          'cierre de caja'):
+                                          'ANTICP-VALES'):
+                # ,'cierre de caja'
+
                 line.debit = iline.euro_haber + iline.euro_debe
                 line.credit = 0
             else:
