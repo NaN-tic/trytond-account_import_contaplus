@@ -91,8 +91,7 @@ def not_balance(move):
         add_tupla2(t_cd, (line.credit, line.debit)),
         move.lines,
         [0, 0])
-    logger.info('credit %f, debit %f
-' % (credit_debit[0], credit_debit[1]))
+    logger.info('credit %f, debit %f' % (credit_debit[0], credit_debit[1]))
     return credit_debit[0] != credit_debit[1]
 
 
