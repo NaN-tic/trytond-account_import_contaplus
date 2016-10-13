@@ -9,11 +9,13 @@ from trytond.pool import Pool, PoolMeta
 from trytond.wizard import Wizard, StateTransition, StateView, Button
 from trytond.transaction import Transaction
 
-
-__all__ = ['AccountImportContaplus', 'AccountImportContaplusStart',
-           'ImportRecord', 'Move', 'Invoice']
+__all__ = [
+    'AccountImportContaplus', 'AccountImportContaplusStart', 'ImportRecord',
+    'Move', 'Invoice'
+]
 
 logger = logging.getLogger(__name__)
+
 
 class DecimalField(Field):
     # decimals in files are separated by period '.'
@@ -27,39 +29,38 @@ class DecimalField(Field):
 
 
 ENTRY_RECORD = (
-    (1,6,'asien', Char),
-    (7,8,'fecha', Date('%Y%m%d')),
-    (15,12,'sub_cta', Char),
-    (27,12,'contra', Char),
-    (39,16,'pta_debe', DecimalField),
-    (55,25,'concepto', Char),
-    (80,16,'pta_haber', DecimalField),
-    (96,8,'factura', Char), # Integer? it fails with some files if Integer.
-    (104,16,'base_impo', DecimalField),
-    (120,5,'iva', DecimalField),
-    (125,5,'recequiv', DecimalField),
-    (130,10,'documento', Char),
-    (140,3,'departa', Char),
-    (143,6,'clave', Char),
-    (149,1,'estado', Char),
-    (150,6,'n_casado', Integer),  # internal contaplus
-    (156,1,'t_casado', Integer),  # internal contaplus
-    (157,6,'trans', Integer),
-    (163,16,'cambio', DecimalField),
-    (179,16,'debe_me', DecimalField),
-    (195,16,'haber_me', DecimalField),
-    (211,1,'auxiliar', Char),
-    (212,1,'serie', Char),
-    (213,4,'sucursal', Char),
-    (217,5,'cod_divisa', Char),
-    (222,16,'imp_aux_me', DecimalField),
-    (238,1,'moneda_uso', Char),
-    (239,16,'euro_debe', DecimalField),
-    (255,16,'euro_haber', DecimalField),
-    (271,16,'base_euro', DecimalField),
-    (287,1,'no_conv', Char),  # internal contaplus
-    (288,10,'numero_inv', Char)
-    )
+    (1, 6, 'asien', Char),
+    (7, 8, 'fecha', Date('%Y%m%d')),
+    (15, 12, 'sub_cta', Char),
+    (27, 12, 'contra', Char),
+    (39, 16, 'pta_debe', DecimalField),
+    (55, 25, 'concepto', Char),
+    (80, 16, 'pta_haber', DecimalField),
+    (96, 8, 'factura', Char),  # Integer? it fails with some files if Integer.
+    (104, 16, 'base_impo', DecimalField),
+    (120, 5, 'iva', DecimalField),
+    (125, 5, 'recequiv', DecimalField),
+    (130, 10, 'documento', Char),
+    (140, 3, 'departa', Char),
+    (143, 6, 'clave', Char),
+    (149, 1, 'estado', Char),
+    (150, 6, 'n_casado', Integer),  # internal contaplus
+    (156, 1, 't_casado', Integer),  # internal contaplus
+    (157, 6, 'trans', Integer),
+    (163, 16, 'cambio', DecimalField),
+    (179, 16, 'debe_me', DecimalField),
+    (195, 16, 'haber_me', DecimalField),
+    (211, 1, 'auxiliar', Char),
+    (212, 1, 'serie', Char),
+    (213, 4, 'sucursal', Char),
+    (217, 5, 'cod_divisa', Char),
+    (222, 16, 'imp_aux_me', DecimalField),
+    (238, 1, 'moneda_uso', Char),
+    (239, 16, 'euro_debe', DecimalField),
+    (255, 16, 'euro_haber', DecimalField),
+    (271, 16, 'base_euro', DecimalField),
+    (287, 1, 'no_conv', Char),  # internal contaplus
+    (288, 10, 'numero_inv', Char))
 
 
 def read_line(line):
@@ -87,10 +88,8 @@ def add_tupla2(t1, t2):
 
 def not_balance(move):
     credit_debit = reduce(
-        lambda t_cd, line:
-        add_tupla2(t_cd, (line.credit, line.debit)),
-        move.lines,
-        [0, 0])
+        lambda t_cd, line: add_tupla2(t_cd, (line.credit, line.debit)),
+        move.lines, [0, 0])
     logger.info('credit %f, debit %f' % (credit_debit[0], credit_debit[1]))
     return credit_debit[0] != credit_debit[1]
 
@@ -144,8 +143,8 @@ class AccountImportContaplusStart(ModelView):
     'Account Import Contaplus Start'
     __name__ = 'account.import.contaplus.start'
     name = fields.Char('Name', states={'read only': True}, required=True)
-    data = fields.Binary('File', filename='name', required=True,
-                         depends=['name'])
+    data = fields.Binary(
+        'File', filename='name', required=True, depends=['name'])
     is_invoice = fields.Boolean('Invoice?')
     journal = fields.Many2One('account.journal', 'Journal', required=True)
 
@@ -153,8 +152,8 @@ class AccountImportContaplusStart(ModelView):
     def on_change_is_invoice(self):
         journal_type = 'revenue' if self.is_invoice else 'general'
         Journal = Pool().get('account.journal')
-        self.journal = Journal.search([('type', "=", journal_type)],
-                                      limit=1)[0].id
+        self.journal = Journal.search(
+            [('type', "=", journal_type)], limit=1)[0].id
 
     @fields.depends('data')
     def on_change_data(self):
@@ -175,22 +174,26 @@ class AccountImportContaplusStart(ModelView):
 class AccountImportContaplus(Wizard):
     'Account Import Contaplus'
     __name__ = 'account.import.contaplus'
-    start = StateView("account.import.contaplus.start",
-                      'account_import_contaplus.account_import_contaplus_start_view_form',[
-                          Button('Cancel', 'end', 'tryton-cancel'),
-                          Button('Import', 'import_', 'tryton-ok', default=True)
-                      ])
+    start = StateView(
+        "account.import.contaplus.start",
+        'account_import_contaplus.account_import_contaplus_start_view_form', [
+            Button('Cancel', 'end', 'tryton-cancel'), Button(
+                'Import', 'import_', 'tryton-ok', default=True)
+        ])
     import_ = StateTransition()
 
     @classmethod
     def __setup__(cls):
         super(AccountImportContaplus, cls).__setup__()
         cls._error_messages.update({
-            'number exists': ('Duplicated account move number "%(move_number)s".'),
+            'number exists':
+            ('Duplicated account move number "%(move_number)s".'),
             'account not found': ('Account "%(account)s" not found '),
-            'multiple accounts found' : ('Multiple accounts fount for "%(account)s"'),
+            'multiple accounts found':
+            ('Multiple accounts fount for "%(account)s"'),
             'party not found': ('Party "%(party)s" not found '),
-            'multiple parties found' : ('Multiple parties fount for "%(party)s"'),
+            'multiple parties found':
+            ('Multiple parties fount for "%(party)s"'),
             'unbalance lines': ('Unbalance lines'),
             'unmatch total invoice': ('Total for %(invoice)s does not match'),
             'missing payment terms': ('Payment terms missing for %(party)s.')
@@ -260,14 +263,9 @@ class AccountImportContaplus(Wizard):
 
             # swap debe haber in some cases due to error.
             # in caja the concepto/clave determines if it is debe or haber.
-            if iline.concepto.strip() in ('',
-                                          'TALON RTTE',
-                                          'CLAVE MANUAL',
-                                          'PAGO ITV',
-                                          'DESEMBOLSO',
-                                          'TRASP. A BAN',
-                                          'TRASP. A BANC',
-                                          'ANTICP-VALES'):
+            if iline.concepto.strip() in (
+                    '', 'TALON RTTE', 'CLAVE MANUAL', 'PAGO ITV', 'DESEMBOLSO',
+                    'TRASP. A BAN', 'TRASP. A BANC', 'ANTICP-VALES'):
                 # ,'cierre de caja'
 
                 line.debit = iline.euro_haber + iline.euro_debe
@@ -278,7 +276,7 @@ class AccountImportContaplus(Wizard):
 
             line.description = " ".join([iline.concepto, iline.documento])
 
-            move.lines = move.lines + (line,)
+            move.lines = move.lines + (line, )
 
         unbalance_moves = filter(not_balance, to_create.values())
         if (unbalance_moves):
@@ -324,9 +322,9 @@ class AccountImportContaplus(Wizard):
         vat_0, = Tax.search([('template', '=', t_vat_0)], limit=1)
 
         to_create = {}
-        vat = vat_0   # default vat no taxes
+        vat = vat_0  # default vat no taxes
         totals = {}
-        invoice = None   # current invoice
+        invoice = None  # current invoice
         for iline in read(str(self.start.data)):
             iline.factura = iline.factura.strip()
             if iline.factura not in to_create:
@@ -339,7 +337,7 @@ class AccountImportContaplus(Wizard):
 
                     self.add_tax_invoice(invoice, vat)
 
-                vat = vat_0   # default vat no taxes
+                vat = vat_0  # default vat no taxes
                 invoice = Invoice()
                 invoice.company = company
                 invoice.currency = company.currency
@@ -358,7 +356,7 @@ class AccountImportContaplus(Wizard):
 
                 if (party.customer_payment_term is None):
                     self.raise_user_error('missing payment terms',
-                                      {'party': party.name})
+                                          {'party': party.name})
                 invoice.party = party
                 totals[invoice.number] = iline.euro_debe + iline.euro_haber
                 invoice.on_change_party()
@@ -379,7 +377,7 @@ class AccountImportContaplus(Wizard):
                     line.taxes = []
 
                 line.description = iline.concepto.strip()
-                invoice.lines = invoice.lines + (line,)
+                invoice.lines = invoice.lines + (line, )
 
             if account[:3] == '477':
                 vat = vat_21
