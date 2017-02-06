@@ -200,6 +200,7 @@ class AccountImportContaplus(Wizard):
         })
 
     def get_party(self, party):
+        logger.info(party)
         Party = Pool().get('party.party')
         parties = Party.search([('rec_name', 'ilike', '%' + party)], limit=2)
         if not parties:
@@ -216,6 +217,15 @@ class AccountImportContaplus(Wizard):
         if (len(accounts) > 1):
             self.raise_user_error('multiple accounts found',
                                   {'account': account})
+        return accounts[0]
+
+    def get_account_maybe(self, account):
+        Account = Pool().get('account.account')
+        accounts = Account.search([('code', '=', account)], limit=2)
+        if not accounts:
+            return None
+        if (len(accounts) > 1):
+            return None
         return accounts[0]
 
     def import_moves(self, company, imp_record):
@@ -253,13 +263,24 @@ class AccountImportContaplus(Wizard):
             party = None
             account = iline.sub_cta.strip()
             account = convert_account(account)
-            if account[:2] in ('40', '41', '43'):
+
+            account_maybe = self.get_account_maybe(account)
+            party_required = (account_maybe is None) or \
+                             (account_maybe.party_required)
+
+            if party_required:
                 party = company.party.code + '-' + account
-                account = account[:2] + ('0' * 6)
+                if (account[:2] in ('40', '41', '43')):
+                    account = account[:2] + ('0' * 6)
 
             line.account = self.get_account(account)
+
             if party:
                 line.party = self.get_party(party)
+
+            logger.info('line account:' + account + 'requires party:' +
+                        str(line.account.party_required) + 'party:' +
+                        str(party))
 
             # swap debe haber in some cases due to error.
             # in caja the concepto/clave determines if it is debe or haber.
@@ -400,8 +421,11 @@ class AccountImportContaplus(Wizard):
             self.check_totals(to_create, totals)
             logger.info("post")
             # for inv in to_create.values():
-            #     print("posting")
-            #     print(inv.number)
+            #     logger.info("posting")
+            #     logger.info(inv.number)
+            #     logger.info(inv.party.name)
+            #     logger.info(inv.party.customer_payment_term.name)
+            #     logger.info(inv.payment_term.name)
             #     Invoice.post([inv])
             Invoice.post(to_create.values())
 
