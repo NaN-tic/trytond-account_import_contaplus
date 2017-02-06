@@ -234,6 +234,9 @@ class AccountImportContaplus(Wizard):
         Line = pool.get('account.move.line')
         Period = pool.get('account.period')
 
+        total_credit = 0
+        total_debit = 0
+
         to_create = {}
         pre = "ALE-"
         for iline in read(str(self.start.data)):
@@ -287,13 +290,21 @@ class AccountImportContaplus(Wizard):
             if iline.concepto.strip() in (
                     '', 'TALON RTTE', 'CLAVE MANUAL', 'PAGO ITV', 'DESEMBOLSO',
                     'TRASP. A BAN', 'TRASP. A BANC', 'ANTICP-VALES'):
-                # ,'cierre de caja'
-
                 line.debit = iline.euro_haber + iline.euro_debe
                 line.credit = 0
+            elif iline.concepto.strip() == 'cierre de caja':
+                if (total_credit > total_debit):
+                    line.debit = iline.euro_haber + iline.euro_debe
+                    line.credit = 0
+                else:
+                    line.credit = iline.euro_haber + iline.euro_debe
+                    line.debit = 0
             else:
                 line.debit = iline.euro_debe
                 line.credit = iline.euro_haber
+
+            total_debit += line.debit
+            total_credit += line.credit
 
             line.description = " ".join([iline.concepto, iline.documento])
 
