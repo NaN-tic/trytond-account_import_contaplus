@@ -12,7 +12,9 @@
             <field name="name">Import Contaplus File</field>
             <field name="wiz_name">account.import.contaplus</field>
         </record>
+
         <!-- Menus -->
-        <menuitem action="wizard_account_import_contaplus" id="menu_account_import_contaplus" parent="account.menu_account" sequence="1" name="Import Contaplus File"/>
+        <menuitem action="wizard_account_import_contaplus" id="menu_account_import_contaplus"
+            parent="account.menu_account" sequence="1" name="Import Contaplus File"/>
     </data>
 </tryton>

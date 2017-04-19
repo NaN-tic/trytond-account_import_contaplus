@@ -9,10 +9,8 @@ from trytond.pool import Pool, PoolMeta
 from trytond.wizard import Wizard, StateTransition, StateView, Button
 from trytond.transaction import Transaction
 
-__all__ = [
-    'AccountImportContaplus', 'AccountImportContaplusStart', 'ImportRecord',
-    'Move', 'Invoice'
-]
+__all__ = ['AccountImportContaplus', 'AccountImportContaplusStart',
+    'ImportRecord', 'Move', 'Invoice']
 
 logger = logging.getLogger(__name__)
 
