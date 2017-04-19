@@ -374,7 +374,7 @@ class AccountImportContaplus(Wizard):
                 invoice.origin = imp_record
                 invoice.number = iline.factura
                 invoice.invoice_date = iline.fecha
-                invoice.type = 'out_invoice'
+                invoice.type = 'out'
                 invoice.journal = self.start.journal
                 to_create[invoice.number] = invoice
                 invoice.lines = []
@@ -458,7 +458,6 @@ class AccountImportContaplus(Wizard):
         return imp_record
 
     def transition_import_(self):
-
         pool = Pool()
         Company = pool.get('company.company')
 
