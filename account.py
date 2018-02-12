@@ -329,13 +329,25 @@ class AccountImportContaplus(Wizard):
                                       {'invoice': invoice.number})
         return True
 
-    def add_tax_invoice(self, invoice, vat):
+    def add_tax_invoice(self, invoice, vat, vat_21):
         for line in invoice.lines:
             # only add for lines that do not have taxes
             if len(line.taxes) == 0:
                 line.taxes = [vat]
+
+        invoice.sii_book_key = 'E'
+        # TODO clientes contados should be F2 ticket
+        invoice.sii_operation_key = 'F1'
+        
+        if vat == vat_21:
+            invoice.sii_subjected_key = 'S1'
+            invoice.sii_issued_key = '01'
+        else:
+            invoice.sii_excemption_key = 'E2'
+            invoice.sii_issued_key = '02'        
         return invoice
 
+    
     def import_invoices(self, company, imp_record):
 
         logger.info("start import invoice")
@@ -367,18 +379,7 @@ class AccountImportContaplus(Wizard):
                     if len(invoice.lines) == 0:
                         del to_create[invoice.number]
 
-                    self.add_tax_invoice(invoice, vat)
-                    
-                    invoice.sii_book_key = 'E'
-                    # TODO clientes contados should be F2 ticket
-                    invoice.sii_operation_key = 'F1'
-                    
-                    if vat == vat_21:
-                        invoice.sii_subjected_key = 'S1'
-                        invoice.sii_issued_key = '01'
-                    else:
-                        invoice.sii_excemption_key = 'E2'
-                        invoice.sii_issued_key = '02'
+                    self.add_tax_invoice(invoice, vat, vat_21)
 
                 vat = vat_0  # default vat no taxes
                 invoice = Invoice()
@@ -436,18 +437,7 @@ class AccountImportContaplus(Wizard):
             if len(invoice.lines) == 0:
                 del to_create[invoice.number]
 
-            self.add_tax_invoice(invoice, vat)
-
-            invoice.sii_book_key = 'E'
-            # TODO clientes contados should be F2 ticket
-            invoice.sii_operation_key = 'F1'
-
-            if vat == vat_21:
-                invoice.sii_subjected_key = 'S1'
-                invoice.sii_issued_key = '01'
-            else:
-                invoice.sii_excemption_key = 'E2'
-                invoice.sii_issued_key = '02'
+            self.add_tax_invoice(invoice, vat, vat_21)
 
         if to_create:
             logger.info("save")
