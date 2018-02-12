@@ -10,7 +10,7 @@ from trytond.wizard import Wizard, StateTransition, StateView, Button
 from trytond.transaction import Transaction
 
 __all__ = ['AccountImportContaplus', 'AccountImportContaplusStart',
-    'ImportRecord', 'Move', 'Invoice']
+           'ImportRecord', 'Move', 'Invoice']
 
 logger = logging.getLogger(__name__)
 
@@ -357,7 +357,9 @@ class AccountImportContaplus(Wizard):
         invoice = None  # current invoice
         for iline in read(str(self.start.data)):
             iline.factura = iline.factura.strip()
-            if iline.factura not in to_create:
+            iline.serie = iline.serie.strip()
+            invoice_number = iline.serie + iline.factura
+            if invoice_number not in to_create:
                 # todo check num factura not alredy there.
                 if invoice:
                     # check factura
@@ -372,7 +374,7 @@ class AccountImportContaplus(Wizard):
                 invoice.company = company
                 invoice.currency = company.currency
                 invoice.origin = imp_record
-                invoice.number = iline.factura
+                invoice.number = invoice_number
                 invoice.invoice_date = iline.fecha
                 invoice.type = 'out'
                 invoice.journal = self.start.journal
@@ -389,6 +391,9 @@ class AccountImportContaplus(Wizard):
                                           {'party': party.name})
                 invoice.party = party
                 totals[invoice.number] = iline.euro_debe + iline.euro_haber
+                # abonos negatius
+                if iline.serie == 'A':
+                    totals[invoice.number] = totals[invoice.number] * -1
                 invoice.on_change_party()
 
             if account[:1] == '7' or account[:2] == '44':
@@ -400,12 +405,13 @@ class AccountImportContaplus(Wizard):
                     line.unit_price = iline.euro_haber * -1
                 else:
                     line.unit_price = iline.euro_haber
-
                 if iline.concepto.strip() == 'AVERIAS/FALTAS/R':
                     line.taxes = [vat_0]
                 else:
                     line.taxes = []
-
+                # abonos negatius
+                if iline.serie == 'A':
+                    line.unit_price = line.unit_price * -1
                 line.description = iline.concepto.strip()
                 invoice.lines = invoice.lines + (line, )
 
