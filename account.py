@@ -368,6 +368,17 @@ class AccountImportContaplus(Wizard):
                         del to_create[invoice.number]
 
                     self.add_tax_invoice(invoice, vat)
+                    
+                    invoice.sii_book_key = 'E'
+                    # TODO clientes contados should be F2 ticket
+                    invoice.sii_operation_key = 'F1'
+                    
+                    if vat == vat_21:
+                        invoice.sii_subjected_key = 'S1'
+                        invoice.sii_issued_key = '01'
+                    else:
+                        invoice.sii_excemption_key = 'E2'
+                        invoice.sii_issued_key = '02'
 
                 vat = vat_0  # default vat no taxes
                 invoice = Invoice()
@@ -426,6 +437,17 @@ class AccountImportContaplus(Wizard):
                 del to_create[invoice.number]
 
             self.add_tax_invoice(invoice, vat)
+
+            invoice.sii_book_key = 'E'
+            # TODO clientes contados should be F2 ticket
+            invoice.sii_operation_key = 'F1'
+
+            if vat == vat_21:
+                invoice.sii_subjected_key = 'S1'
+                invoice.sii_issued_key = '01'
+            else:
+                invoice.sii_excemption_key = 'E2'
+                invoice.sii_issued_key = '02'
 
         if to_create:
             logger.info("save")
