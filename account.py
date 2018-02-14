@@ -447,7 +447,9 @@ class AccountImportContaplus(Wizard):
             logger.info("check total")
             self.check_totals(to_create, totals)
             logger.info("post")
-            # for inv in to_create.values():
+            for inv in to_create.values():
+                inv.payment_type_kind = inv.on_change_with_payment_type_kind()
+                inv.payment_type = inv.on_change_with_payment_type()
             #     logger.info("posting")
             #     logger.info(inv.number)
             #     logger.info(inv.party.name)
