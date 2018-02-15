@@ -439,18 +439,21 @@ class AccountImportContaplus(Wizard):
 
             self.add_tax_invoice(invoice, vat, vat_21)
 
-            untaxed_amount = sum(line.quantity * line.unit_price
-                for line in invoice.lines if line.quantity)
-
-            # set payment type
-            if untaxed_amount > 0 and invoice.party.customer_payment_type:
-                invoice.payment_type = invoice.party.customer_payment_type
-                invoice._get_bank_account()
-            elif untaxed_amount < 0 and invoice.party.supplier_payment_type:
-                invoice.payment_type = invoice.party.supplier_payment_type
-                invoice._get_bank_account()
-
         if to_create:
+            # recalculate invoice fields
+            for k, invoice in to_create.items():
+                untaxed_amount = sum(line.quantity * line.unit_price
+                    for line in invoice.lines if line.quantity)
+
+                # set payment type
+                if untaxed_amount > 0 and invoice.party.customer_payment_type:
+                    invoice.payment_type = invoice.party.customer_payment_type
+                    invoice._get_bank_account()
+                elif untaxed_amount < 0 and invoice.party.supplier_payment_type:
+                    invoice.payment_type = invoice.party.supplier_payment_type
+                    invoice._get_bank_account()
+                to_create[k] = invoice
+
             logger.info("save")
             Invoice.save(to_create.values())
             logger.info("update_taxes")
