@@ -338,26 +338,26 @@ class AccountImportContaplus(Wizard):
         invoice.sii_book_key = 'E'
         # TODO clientes contados should be F2 ticket
         invoice.sii_operation_key = 'F1'
-        
+
         if vat == vat_21:
             invoice.sii_subjected_key = 'S1'
             invoice.sii_issued_key = '01'
         else:
             invoice.sii_excemption_key = 'E2'
-            invoice.sii_issued_key = '02'        
+            invoice.sii_issued_key = '02'
         return invoice
 
-    
-    def import_invoices(self, company, imp_record):
 
-        logger.info("start import invoice")
+    def import_invoices(self, company, imp_record):
         pool = Pool()
         Invoice = pool.get('account.invoice')
         Line = pool.get('account.invoice.line')
-
         ModelData = pool.get('ir.model.data')
         Tax = pool.get('account.tax')
 
+        logger.info("start import invoice")
+
+        # TODO upgrade 4.7
         t_vat_21 = Tax(ModelData.get_id('account_es', 'iva_rep_21'))
         t_vat_0 = Tax(ModelData.get_id('account_es', 'iva_rep_ex'))
         vat_21, = Tax.search([('template', '=', t_vat_21)], limit=1)
@@ -439,6 +439,17 @@ class AccountImportContaplus(Wizard):
 
             self.add_tax_invoice(invoice, vat, vat_21)
 
+            untaxed_amount = sum(line.quantity * line.unit_price
+                for line in invoice.lines if line.quantity)
+
+            # set payment type
+            if untaxed_amount > 0 and invoice.party.customer_payment_type:
+                invoice.payment_type = invoice.party.customer_payment_type
+                invoice._get_bank_account()
+            elif untaxed_amount < 0 and invoice.party.supplier_payment_type:
+                invoice.payment_type = invoice.party.supplier_payment_type
+                invoice._get_bank_account()
+
         if to_create:
             logger.info("save")
             Invoice.save(to_create.values())
@@ -447,9 +458,6 @@ class AccountImportContaplus(Wizard):
             logger.info("check total")
             self.check_totals(to_create, totals)
             logger.info("post")
-            for inv in to_create.values():
-                inv.payment_type_kind = inv.on_change_with_payment_type_kind()
-                inv.payment_type = inv.on_change_with_payment_type()
             #     logger.info("posting")
             #     logger.info(inv.number)
             #     logger.info(inv.party.name)
