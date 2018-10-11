@@ -8,6 +8,7 @@ from trytond.model import ModelView, ModelSQL, fields
 from trytond.pool import Pool, PoolMeta
 from trytond.wizard import Wizard, StateTransition, StateView, Button
 from trytond.transaction import Transaction
+from functools import reduce
 
 __all__ = ['AccountImportContaplus', 'AccountImportContaplusStart',
            'ImportRecord', 'Move', 'Invoice']
@@ -108,10 +109,8 @@ def convert_account(account):
         return account
 
 
-class Move:
+class Move(metaclass=PoolMeta):
     __name__ = 'account.move'
-    # seach this 'class' account.move in the list of register entities in Pool.
-    __metaclass__ = PoolMeta
 
     @classmethod
     def _get_origin(cls):
@@ -119,9 +118,8 @@ class Move:
         return super(Move, cls)._get_origin() + ['import.record']
 
 
-class Invoice:
+class Invoice(metaclass=PoolMeta):
     __name__ = 'account.invoice'
-    __metaclass__ = PoolMeta
 
     @classmethod
     def _get_origin(cls):
@@ -308,17 +306,17 @@ class AccountImportContaplus(Wizard):
 
             move.lines = move.lines + (line, )
 
-        unbalance_moves = filter(not_balance, to_create.values())
+        unbalance_moves = list(filter(not_balance, list(to_create.values())))
         if (unbalance_moves):
             self.raise_user_error('unbalance lines')
         if to_create:
-            Move.save(to_create.values())
-            Move.post(to_create.values())
+            Move.save(list(to_create.values()))
+            Move.post(list(to_create.values()))
         # return created moves
         return to_create
 
     def check_totals(self, invoices, totals):
-        for invoice in invoices.values():
+        for invoice in list(invoices.values()):
             if not invoice.total_amount == totals[invoice.number]:
                 logger.info('unmatch total')
                 logger.info(invoice.total_amount)
@@ -441,7 +439,7 @@ class AccountImportContaplus(Wizard):
 
         if to_create:
             # recalculate invoice fields
-            for k, invoice in to_create.items():
+            for k, invoice in list(to_create.items()):
                 untaxed_amount = sum(line.quantity * line.unit_price
                     for line in invoice.lines if line.quantity)
 
@@ -455,9 +453,9 @@ class AccountImportContaplus(Wizard):
                 to_create[k] = invoice
 
             logger.info("save")
-            Invoice.save(to_create.values())
+            Invoice.save(list(to_create.values()))
             logger.info("update_taxes")
-            Invoice.update_taxes(to_create.values())
+            Invoice.update_taxes(list(to_create.values()))
             logger.info("check total")
             self.check_totals(to_create, totals)
             logger.info("post")
@@ -467,7 +465,7 @@ class AccountImportContaplus(Wizard):
             #     logger.info(inv.party.customer_payment_term.name)
             #     logger.info(inv.payment_term.name)
             #     Invoice.post([inv])
-            Invoice.post(to_create.values())
+            Invoice.post(list(to_create.values()))
 
         return to_create
 
