@@ -138,7 +138,7 @@ class ImportRecord(ModelSQL, ModelView):
 class AccountImportContaplusStart(ModelView):
     'Account Import Contaplus Start'
     __name__ = 'account.import.contaplus.start'
-    name = fields.Char('Name', states={'read only': True}, required=True)
+    name = fields.Char('Name', states={'readonly': True}, required=True)
     data = fields.Binary(
         'File', filename='name', required=True, depends=['name'])
     is_invoice = fields.Boolean('Invoice?')
