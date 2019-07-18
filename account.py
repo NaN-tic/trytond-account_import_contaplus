@@ -154,12 +154,13 @@ class AccountImportContaplusStart(ModelView):
     @fields.depends('data')
     def on_change_data(self):
         inv = False
-        for iline in read_all(str(self.data)):
-            if len(iline.contra.strip()) > 0:
-                inv = True
-                break
-        self.is_invoice = inv
-        self.on_change_is_invoice()
+        if self.data:
+            for iline in read_all(str(self.data)):
+                if len(iline.contra.strip()) > 0:
+                    inv = True
+                    break
+                self.is_invoice = inv
+                self.on_change_is_invoice()
 
     @staticmethod
     def default_journal():
