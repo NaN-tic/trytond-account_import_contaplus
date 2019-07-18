@@ -4,6 +4,8 @@ from retrofix.fields import Char, Date, Field, Integer
 from retrofix.record import Record
 from decimal import Decimal
 
+from trytond.i18n import gettext
+from trytond.exceptions import UserError, UserWarning
 from trytond.model import ModelView, ModelSQL, fields
 from trytond.pool import Pool, PoolMeta
 from trytond.wizard import Wizard, StateTransition, StateView, Button
@@ -178,42 +180,31 @@ class AccountImportContaplus(Wizard):
                 'Import', 'import_', 'tryton-ok', default=True)
         ])
     import_ = StateTransition()
-
-    @classmethod
-    def __setup__(cls):
-        super(AccountImportContaplus, cls).__setup__()
-        cls._error_messages.update({
-            'number exists':
-            ('Duplicated account move number "%(move_number)s".'),
-            'account not found': ('Account "%(account)s" not found '),
-            'multiple accounts found':
-            ('Multiple accounts fount for "%(account)s"'),
-            'party not found': ('Party "%(party)s" not found '),
-            'multiple parties found':
-            ('Multiple parties fount for "%(party)s"'),
-            'unbalance lines': ('Unbalance lines'),
-            'unmatch total invoice': ('Total for %(invoice)s does not match'),
-            'missing payment terms': ('Payment terms missing for %(party)s.')
-        })
-
     def get_party(self, party):
         logger.info(party)
         Party = Pool().get('party.party')
         parties = Party.search([('rec_name', 'ilike', '%' + party)], limit=2)
         if not parties:
-            self.raise_user_error('party not found', {'party': party})
+            raise UserError(
+                gettext('account_import_contaplus.msg_party_not_found' ,
+                        party=party.rec_name))
         if (len(parties) > 1):
-            self.raise_user_error('multiple parties found', {'party': party})
+            raise UserError(
+                gettext('account_import_contaplus.msg_multiple_parties_found' ,
+                        party=party.rec_name))
         return parties[0]
 
     def get_account(self, account):
         Account = Pool().get('account.account')
         accounts = Account.search([('code', '=', account)], limit=2)
         if not accounts:
-            self.raise_user_error('account not found', {'account': account})
-        if (len(accounts) > 1):
-            self.raise_user_error('multiple accounts found',
-                                  {'account': account})
+            raise UserError(
+                gettext('account_import_contaplus.msg_account_not_found' ,
+                        account=account.rec_name))
+        if (len(accounts) > 1):             
+            raise UserError(
+                gettext('account_import_contaplus.msg_multiple_accounts_found' ,
+                        account=account.rec_name))
         return accounts[0]
 
     def get_account_maybe(self, account):
@@ -246,8 +237,9 @@ class AccountImportContaplus(Wizard):
                 move.number = asien
 
                 if len(Move.search(['number', '=', asien], limit=1)) > 0:
-                    self.raise_user_error('number exists',
-                                          {'move_number': asien})
+                    raise UserError(
+                        gettext('account_import_contaplus.msg_number_exists' ,
+                                move_number=asien))
 
                 move.date = iline.fecha
                 move.period = Period.find(company.id, date=move.date)
@@ -309,7 +301,8 @@ class AccountImportContaplus(Wizard):
 
         unbalance_moves = list(filter(not_balance, list(to_create.values())))
         if (unbalance_moves):
-            self.raise_user_error('unbalance lines')
+            raise UserError(
+                gettext('account_import_contaplus.msg_unbalance_lines'))
         if to_create:
             Move.save(list(to_create.values()))
             Move.post(list(to_create.values()))
@@ -324,8 +317,9 @@ class AccountImportContaplus(Wizard):
                 logger.info(totals[invoice.number])
                 for line in invoice.lines:
                     logger.info(line.unit_price)
-                self.raise_user_error('unmatch total invoice',
-                                      {'invoice': invoice.number})
+                raise UserError(
+                    gettext('account_import_contaplus.msg_unmatch_total_invoice' ,
+                            invoice=invoice.number))
         return True
 
     def add_tax_invoice(self, invoice, vat, vat_21):
@@ -398,8 +392,10 @@ class AccountImportContaplus(Wizard):
                 party = self.get_party(party_code)
 
                 if (party.customer_payment_term is None):
-                    self.raise_user_error('missing payment terms',
-                                          {'party': party.name})
+                    raise UserError(
+                        gettext('account_import_contaplus.msg_missing_payment_term' ,
+                                party=party.rec_name))
+
                 invoice.party = party
                 totals[invoice.number] = iline.euro_debe + iline.euro_haber
                 # abonos negatius

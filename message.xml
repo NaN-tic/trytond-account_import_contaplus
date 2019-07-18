@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<!-- This file is part of Tryton.  The COPYRIGHT file at the top level of
+     this repository contains the full copyright notices and license terms. -->
+<tryton><data group="1">
+  <record model="ir.message" id="msg_number_exists">
+    <field name="text">Duplicated account move number "%(move_number)s".</field>
+  </record>
+  <record model="ir.message" id="msg_multiple_accounts_found">
+    <field name="text">Multiple accounts fount for "%(account)s"</field>
+  </record>
+  <record model="ir.message" id="msg_party_not_found">
+    <field name="text">Party "%(party)s" not found</field>
+  </record>
+  <record model="ir.message" id="msg_multiple_parties_found">
+    <field name="text">Multiple parties fount for "%(party)s"</field>
+  </record>
+  <record model="ir.message" id="msg_unbalance_lines">
+    <field name="text">Unbalance lines</field>
+  </record>
+  <record model="ir.message" id="msg_unmatch_total_invoice">
+    <field name="text">Total for %(invoice)s does not match</field>
+  </record>
+  <record model="ir.message" id="msg_missing_payment_term">
+    <field name="text">Payment terms missing for %(party)s.</field>
+  </record>
+
+</data></tryton>
