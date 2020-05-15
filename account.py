@@ -157,7 +157,7 @@ class AccountImportContaplusStart(ModelView):
     def on_change_data(self):
         inv = False
         if self.data:
-            for iline in read_all(str(self.data)):
+            for iline in read_all(str(self.data, 'utf8')):
                 if len(iline.contra.strip()) > 0:
                     inv = True
                     break
@@ -187,11 +187,11 @@ class AccountImportContaplus(Wizard):
         if not parties:
             raise UserError(
                 gettext('account_import_contaplus.msg_party_not_found' ,
-                        party=party.rec_name))
+                        party=party))
         if (len(parties) > 1):
             raise UserError(
                 gettext('account_import_contaplus.msg_multiple_parties_found' ,
-                        party=party.rec_name))
+                        party=party))
         return parties[0]
 
     def get_account(self, account):
@@ -200,11 +200,11 @@ class AccountImportContaplus(Wizard):
         if not accounts:
             raise UserError(
                 gettext('account_import_contaplus.msg_account_not_found' ,
-                        account=account.rec_name))
-        if (len(accounts) > 1):             
+                        account=account))
+        if (len(accounts) > 1):
             raise UserError(
                 gettext('account_import_contaplus.msg_multiple_accounts_found' ,
-                        account=account.rec_name))
+                        account=account))
         return accounts[0]
 
     def get_account_maybe(self, account):
@@ -227,7 +227,7 @@ class AccountImportContaplus(Wizard):
 
         to_create = {}
         pre = "ALE-"
-        for iline in read(str(self.start.data)):
+        for iline in read(str(self.start.data, 'utf8')):
             asien = pre + iline.asien
 
             if asien not in to_create:
@@ -360,7 +360,7 @@ class AccountImportContaplus(Wizard):
         vat = vat_0  # default vat no taxes
         totals = {}
         invoice = None  # current invoice
-        for iline in read(str(self.start.data)):
+        for iline in read(str(self.start.data, 'utf8')):
             iline.factura = iline.factura.strip()
             iline.serie = iline.serie.strip()
             invoice_number = iline.serie + iline.factura
