@@ -161,8 +161,8 @@ class AccountImportContaplusStart(ModelView):
                 if len(iline.contra.strip()) > 0:
                     inv = True
                     break
-                self.is_invoice = inv
-                self.on_change_is_invoice()
+            self.is_invoice = inv
+            self.on_change_is_invoice()
 
     @staticmethod
     def default_journal():
