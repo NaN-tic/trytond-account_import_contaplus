@@ -403,6 +403,7 @@ class AccountImportContaplus(Wizard):
                     totals[invoice.number] = totals[invoice.number] * -1
                 invoice.on_change_party()
                 invoice.account = invoice.on_change_with_account()
+                invoice.payment_term = invoice.on_change_with_payment_term()
 
             if account[:1] == '7' or account[:2] == '44':
                 line = Line()
