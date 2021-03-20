@@ -3,7 +3,6 @@
 import unittest
 import trytond.tests.test_tryton
 from trytond.tests.test_tryton import ModuleTestCase
-from trytond.pool import Pool
 
 
 class AccountImportContaplusTestCase(ModuleTestCase):
