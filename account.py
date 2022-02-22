@@ -352,8 +352,10 @@ class AccountImportContaplus(Wizard):
         # TODO upgrade 4.7
         t_vat_21 = Tax(ModelData.get_id('account_es', 'iva_rep_21'))
         t_vat_0 = Tax(ModelData.get_id('account_es', 'iva_rep_ex'))
-        vat_21, = Tax.search([('template', '=', t_vat_21)], limit=1)
-        vat_0, = Tax.search([('template', '=', t_vat_0)], limit=1)
+        vat_21, = Tax.search([('template', '=', t_vat_21),
+                              ('company', '=', company)], limit=1)
+        vat_0, = Tax.search([('template', '=', t_vat_0),
+                             ('company', '=', company)], limit=1)
 
         to_create = {}
         vat = vat_0  # default vat no taxes
