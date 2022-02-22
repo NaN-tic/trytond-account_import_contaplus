@@ -191,9 +191,10 @@ class AccountImportContaplus(Wizard):
                         party=party))
         return parties[0]
 
-    def get_account(self, account):
+    def get_account(self, account, company):
         Account = Pool().get('account.account')
-        accounts = Account.search([('code', '=', account)], limit=2)
+        accounts = Account.search([('code', '=', account),
+                                   ('company', '=', company)], limit=2)
         if not accounts:
             raise UserError(
                 gettext('account_import_contaplus.msg_account_not_found' ,
@@ -204,9 +205,10 @@ class AccountImportContaplus(Wizard):
                         account=account))
         return accounts[0]
 
-    def get_account_maybe(self, account):
+    def get_account_maybe(self, account, company):
         Account = Pool().get('account.account')
-        accounts = Account.search([('code', '=', account)], limit=2)
+        accounts = Account.search([('code', '=', account),
+                                   ('company', '=', company)], limit=2)
         if not accounts:
             return None
         if (len(accounts) > 1):
@@ -253,7 +255,7 @@ class AccountImportContaplus(Wizard):
             account = iline.sub_cta.strip()
             account = convert_account(account)
 
-            account_maybe = self.get_account_maybe(account)
+            account_maybe = self.get_account_maybe(account, company)
             party_required = (account_maybe is None) or \
                              (account_maybe.party_required)
 
@@ -262,7 +264,7 @@ class AccountImportContaplus(Wizard):
                 if (account[:2] in ('40', '41', '43')):
                     account = account[:2] + ('0' * 6)
 
-            line.account = self.get_account(account)
+            line.account = self.get_account(account, company)
 
             if party:
                 line.party = self.get_party(party)
@@ -404,7 +406,7 @@ class AccountImportContaplus(Wizard):
 
             if account[:1] == '7' or account[:2] == '44':
                 line = Line()
-                line.account = self.get_account(iline.sub_cta.strip())
+                line.account = self.get_account(iline.sub_cta.strip(), company)
                 line.quantity = 1
 
                 if iline.concepto.strip() == 'DIFERENCIA PORTE':
