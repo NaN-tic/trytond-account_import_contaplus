@@ -402,6 +402,7 @@ class AccountImportContaplus(Wizard):
                 # abonos negatius
                 if iline.serie == 'A':
                     totals[invoice.number] = totals[invoice.number] * -1
+
                 invoice.on_change_party()
                 invoice.account = invoice.on_change_with_account()
                 # on_change_party sets the payment term.
@@ -497,7 +498,8 @@ class AccountImportContaplus(Wizard):
         imp_record = self.create_import_record()
 
         if (self.start.is_invoice):
-            self.import_invoices(company, imp_record)
+            with Transaction().set_context(_skip_warnings=True):
+                self.import_invoices(company, imp_record)
         else:
             self.import_moves(company, imp_record)
 
