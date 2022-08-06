@@ -24,5 +24,8 @@
     <record model="ir.message" id="msg_missing_payment_term">
       <field name="text">Payment terms missing for %(party)s.</field>
     </record>
-  </data>
+    <record model="ir.message" id="msg_factura_exists">
+      <field name="text">Invoice "%(number)s" already exists for this company.</field>
+    </record>
+ </data>
 </tryton>
