@@ -107,15 +107,15 @@ def convert_account(account):
     else:
         return account
 
-def find_factura(number, company):
+def find_invoice(number, company):
     pool = Pool()
     Invoice = pool.get('account.invoice')
-    invoice, = Invoice.search([('number', '=', number),
+    invoices = Invoice.search([('number', '=', number),
                                ('company', '=', company)], limit=1)
-    return invoice
+    return invoices[0] if invoices else None
     
-def check_factura_not_exists(number, company):
-    if find_factura(number, company):
+def check_invoice_not_exists(number, company):
+    if find_invoice(number, company):
         raise UserError(
             gettext('account_import_contaplus.msg_factura_exists',
                     number=number))
@@ -381,7 +381,7 @@ class AccountImportContaplus(Wizard):
             invoice_number = iline.serie + iline.factura
             if invoice_number not in to_create:
                 # todo check num factura not alredy there.
-                check_factura_not_exists(invoice_number, company)
+                check_invoice_not_exists(invoice_number, company)
                 
                 if invoice:
                     # check factura
