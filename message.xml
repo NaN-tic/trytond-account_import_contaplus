@@ -27,5 +27,9 @@
     <record model="ir.message" id="msg_factura_exists">
       <field name="text">Invoice "%(number)s" already exists for this company.</field>
     </record>
+    <record model="ir.message" id="msg_account_not_found">
+      <field name="text">Missing account: %(account)s.</field>
+    </record>
+
  </data>
 </tryton>
