@@ -15,3 +15,5 @@ def suite():
     suite.addTests(unittest.TestLoader().loadTestsFromTestCase(
         AccountImportContaplusTestCase))
     return suite
+
+del ModuleTestCase
