@@ -113,7 +113,7 @@ def find_invoice(number, company):
     invoices = Invoice.search([('number', '=', number),
                                ('company', '=', company)], limit=1)
     return invoices[0] if invoices else None
-    
+
 def check_invoice_not_exists(number, company):
     if find_invoice(number, company):
         raise UserError(
@@ -352,7 +352,7 @@ class AccountImportContaplus(Wizard):
             invoice.sii_issued_key = '02'
         return invoice
 
-        
+
 
     def import_invoices(self, company, imp_record):
         pool = Pool()
@@ -382,7 +382,7 @@ class AccountImportContaplus(Wizard):
             if invoice_number not in to_create:
                 # todo check num factura not alredy there.
                 check_invoice_not_exists(invoice_number, company)
-                
+
                 if invoice:
                     # check factura
                     # if lines empty remove from to_create
@@ -420,7 +420,7 @@ class AccountImportContaplus(Wizard):
                     totals[invoice.number] = totals[invoice.number] * -1
 
                 invoice.on_change_party()
-                invoice.account = invoice.on_change_with_account()
+                invoice._update_account()
                 # on_change_party sets the payment term.
                 # invoice.payment_term = invoice.on_change_with_payment_term()
 
