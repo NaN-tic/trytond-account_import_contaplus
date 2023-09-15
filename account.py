@@ -458,7 +458,7 @@ class AccountImportContaplus(Wizard):
         if to_create:
             # recalculate invoice fields
             for k, invoice in list(to_create.items()):
-                untaxed_amount = sum(line.quantity * line.unit_price
+                untaxed_amount = sum(Decimal(line.quantity) * line.unit_price
                     for line in invoice.lines if line.quantity)
 
                 # set payment type
