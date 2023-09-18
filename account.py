@@ -69,8 +69,10 @@ def read_line(line):
 
 
 def read_all(data):
-    return map(read_line, data.splitlines())
-
+    try:
+        return map(read_line, data.splitlines())
+    except UnicodeDecodeError as e:
+        raise UserError(str(e))
 
 def filter_with_account(data):
     return filter((lambda s: len(s.sub_cta.strip()) != 0), data)
@@ -167,7 +169,7 @@ class AccountImportContaplusStart(ModelView):
     def on_change_data(self):
         inv = False
         if self.data:
-            for iline in read_all(str(self.data, 'utf8')):
+            for iline in read_all(self.data):
                 if len(iline.contra.strip()) > 0:
                     inv = True
                     break
