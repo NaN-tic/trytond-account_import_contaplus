@@ -169,7 +169,7 @@ class AccountImportContaplusStart(ModelView):
     def on_change_data(self):
         inv = False
         if self.data:
-            for iline in read_all(self.data):
+            for iline in read_all(str(self.data, 'utf8')):
                 if len(iline.contra.strip()) > 0:
                     inv = True
                     break
