@@ -167,14 +167,22 @@ class AccountImportContaplusStart(ModelView):
 
     @fields.depends('data')
     def on_change_data(self):
-        inv = False
+        is_invoice = False
+
         if self.data:
-            for iline in read_all(str(self.data, 'utf8')):
-                if len(iline.contra.strip()) > 0:
-                    inv = True
-                    break
-            self.is_invoice = inv
-            self.on_change_is_invoice()
+            data = None
+            try:
+                data = str(self.data, 'utf8')
+            except UnicodeDecodeError:
+                pass
+            if data:
+                for iline in read_all(data):
+                    if len(iline.contra.strip()) > 0:
+                        is_invoice = True
+                        break
+
+        self.is_invoice = is_invoice
+        self.on_change_is_invoice()
 
     @staticmethod
     def default_journal():
