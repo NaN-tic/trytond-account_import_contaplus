@@ -370,12 +370,13 @@ class AccountImportContaplus(Wizard):
         Line = pool.get('account.invoice.line')
         ModelData = pool.get('ir.model.data')
         Tax = pool.get('account.tax')
+        TaxTemplate = pool.get('account.tax.template')
 
         logger.info("start import invoice")
 
         # TODO upgrade 4.7
-        t_vat_21 = Tax(ModelData.get_id('account_es', 'iva_rep_21'))
-        t_vat_0 = Tax(ModelData.get_id('account_es', 'iva_rep_ex'))
+        t_vat_21 = TaxTemplate(ModelData.get_id('account_es', 'iva_rep_21'))
+        t_vat_0 = TaxTemplate(ModelData.get_id('account_es', 'iva_rep_ex'))
         vat_21, = Tax.search([('template', '=', t_vat_21),
                               ('company', '=', company)], limit=1)
         vat_0, = Tax.search([('template', '=', t_vat_0),
