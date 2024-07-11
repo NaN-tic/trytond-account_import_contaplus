@@ -2,7 +2,7 @@ import logging
 from retrofix.exception import RetrofixException
 from retrofix.fields import Char, Date, Field, Integer
 from retrofix.record import Record
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from trytond.i18n import gettext
 from trytond.exceptions import UserError
@@ -23,7 +23,10 @@ class DecimalField(Field):
         super(DecimalField, self).__init__()
 
     def set_from_file(self, value):
-        return Decimal(value)
+        try:
+            return Decimal(value)
+        except InvalidOperation:
+            raise UserError('%s. Invalid decimal value: %s' % (self._name, value))
 
 
 ENTRY_RECORD = (
