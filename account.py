@@ -134,6 +134,12 @@ class Move(metaclass=PoolMeta):
         'Return list of Model names for origin Reference'
         return super(Move, cls)._get_origin() + ['import.record']
 
+    def get_allow_draft(self, name):
+        ImportRecord = Pool().get('import.record')
+        if (self.origin and isinstance(self.origin, ImportRecord)):
+            return True
+        return super().get_allow_draft(name)
+
 
 class Invoice(metaclass=PoolMeta):
     __name__ = 'account.invoice'
