@@ -134,6 +134,14 @@ class Move(metaclass=PoolMeta):
         'Return list of Model names for origin Reference'
         return super(Move, cls)._get_origin() + ['import.record']
 
+    def get_allow_button_draft(self, name):
+        pool = Pool()
+        ImportRecord = pool.get('import.record')
+
+        if self.origin and isinstance(self.origin, ImportRecord))
+            return True
+        return super().get_allow_button_draft(name)
+
     def get_allow_draft(self, name):
         ImportRecord = Pool().get('import.record')
         if (self.origin and isinstance(self.origin, ImportRecord)):
