@@ -138,7 +138,7 @@ class Move(metaclass=PoolMeta):
         pool = Pool()
         ImportRecord = pool.get('import.record')
 
-        if self.origin and isinstance(self.origin, ImportRecord))
+        if self.origin and isinstance(self.origin, ImportRecord):
             return True
         return super().get_allow_button_draft(name)
 
