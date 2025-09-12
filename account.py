@@ -399,6 +399,7 @@ class AccountImportContaplus(Wizard):
         vat_0, = Tax.search([('template', '=', t_vat_0),
                              ('company', '=', company)], limit=1)
 
+        invoices = []
         to_create = {}
         vat = vat_0  # default vat no taxes
         totals = {}
@@ -511,9 +512,11 @@ class AccountImportContaplus(Wizard):
             #     logger.info(inv.party.customer_payment_term.name)
             #     logger.info(inv.payment_term.name)
             #     Invoice.post([inv])
-            Invoice.post(list(to_create.values()))
+            to_post = Invoice.browse(to_create.values())
+            Invoice.post(to_post)
+            invoices += to_post
 
-        return to_create
+        return invoices
 
     def create_import_record(self):
         pool = Pool()
