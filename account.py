@@ -483,6 +483,7 @@ class AccountImportContaplus(Wizard):
 
             self.add_tax_invoice(invoice, vat, vat_21)
 
+        invoices = []
         if to_create:
             # recalculate invoice fields
             for k, invoice in list(to_create.items()):
@@ -511,9 +512,11 @@ class AccountImportContaplus(Wizard):
             #     logger.info(inv.party.customer_payment_term.name)
             #     logger.info(inv.payment_term.name)
             #     Invoice.post([inv])
-            Invoice.post(list(to_create.values()))
+            to_post = Invoice.browse(to_create.values())
+            Invoice.post(to_post)
+            invoices += to_post
 
-        return to_create
+        return invoices
 
     def create_import_record(self):
         pool = Pool()
