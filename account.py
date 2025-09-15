@@ -399,7 +399,6 @@ class AccountImportContaplus(Wizard):
         vat_0, = Tax.search([('template', '=', t_vat_0),
                              ('company', '=', company)], limit=1)
 
-        invoices = []
         to_create = {}
         vat = vat_0  # default vat no taxes
         totals = {}
@@ -484,6 +483,7 @@ class AccountImportContaplus(Wizard):
 
             self.add_tax_invoice(invoice, vat, vat_21)
 
+        invoices = []
         if to_create:
             # recalculate invoice fields
             for k, invoice in list(to_create.items()):
