@@ -423,7 +423,6 @@ class AccountImportContaplus(Wizard):
                 invoice = Invoice()
                 invoice.company = company
                 invoice.currency = company.currency
-                invoice.origin = imp_record
                 invoice.number = invoice_number
                 invoice.invoice_date = iline.fecha
                 invoice.type = 'out'
