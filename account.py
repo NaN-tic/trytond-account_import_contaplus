@@ -366,20 +366,7 @@ class AccountImportContaplus(Wizard):
             # only add for lines that do not have taxes
             if len(line.taxes) == 0:
                 line.taxes = [vat]
-
-        invoice.sii_book_key = 'E'
-        # TODO clientes contados should be F2 ticket
-        invoice.sii_operation_key = 'F1'
-
-        if vat == vat_21:
-            invoice.sii_subjected_key = 'S1'
-            invoice.sii_issued_key = '01'
-        else:
-            invoice.sii_excemption_key = 'E2'
-            invoice.sii_issued_key = '02'
         return invoice
-
-
 
     def import_invoices(self, company, imp_record):
         pool = Pool()
@@ -427,6 +414,7 @@ class AccountImportContaplus(Wizard):
                 invoice.invoice_date = iline.fecha
                 invoice.type = 'out'
                 invoice.journal = self.start.journal
+                invoice._on_change_lines_taxes()
                 to_create[invoice.number] = invoice
                 invoice.lines = []
 
